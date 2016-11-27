@@ -7,7 +7,7 @@ const fs = require('fs')
 const client = path.join(__dirname, 'client.js')
 
 const assets = bankai()
-const css = assets.css({ use: ['sheetify-stylus']})
+const css = assets.css({ use: ['sheetify-stylus'] })
 const js = assets.js(browserify, client)
 const html = assets.html()
 
@@ -17,6 +17,8 @@ http.createServer((req, res) => {
     case '/zik.mp3': return fs.createReadStream(path.resolve(__dirname, './zik.mp3')).pipe(res)
     case '/bundle.js': return js(req, res).pipe(res)
     case '/bundle.css': return css(req, res).pipe(res)
-    default: return res.statusCode = 404 && res.end('404 not found')
+    default:
+      res.statusCode = 404
+      return res.end('404 not found')
   }
 }).listen(8080)

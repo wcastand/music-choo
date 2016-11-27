@@ -1,16 +1,16 @@
-module.exports = (p0, p1, p2, p3) => { 
+module.exports = (p0, p1, p2, p3) => {
   const x0 = p0.x
   const y0 = p0.y
 
   const x1 = p1.x
   const y1 = p1.y
-  
+
   const x2 = p2.x
   const y2 = p2.y
-  
+
   const x3 = p3.x
   const y3 = p3.y
-  
+
   const xc1 = (x0 + x1) / 2
   const yc1 = (y0 + y1) / 2
   const xc2 = (x0 + x2) / 2
@@ -32,13 +32,13 @@ module.exports = (p0, p1, p2, p3) => {
   const ym2 = yc2 + (yc3 - yc2) * k2
 
   return {
-    s: { 
+    s: {
       x: xm1 + (xc2 - xm1) * 0 + x1 - xm1,
       y: ym1 + (yc2 - ym1) * 0 + y1 - ym1
     },
-    e: { 
+    e: {
       x: xm2 + (xc2 - xm2) * 0 + x2 - xm2,
       y: ym2 + (yc2 - ym2) * 0 + y2 - ym2
-    },
+    }
   }
 }

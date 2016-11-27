@@ -4,6 +4,7 @@ const html = require('choo/html')
 const sf = require('sheetify')
 const app = choo()
 
+const { getCurvePoints } = require('cardinal-spline-js')
 const smooth = require('./smooth')
 
 sf('./main.styl', { global: true })
@@ -12,45 +13,54 @@ window.mozRequestAnimationFrame ||
 window.webkitRequestAnimationFrame ||
 window.msRequestAnimationFrame
 
-if (! window.AudioContext) {
-  if (! window.webkitAudioContext)
-    alert('no audiocontext found')
+if (!window.AudioContext) {
+  if (!window.webkitAudioContext) {
+    window.alert('no audiocontext found')
+  }
   window.AudioContext = window.webkitAudioContext
 }
-const context = new AudioContext()
+const context = new window.AudioContext()
 const URL = './zik.mp3'
 
-const drawPoint = ctx => (prev, actual) => {
-  const center_x = window.innerWidth / 2
-  const center_y = window.innerHeight / 2  
-  const px = center_x + prev.radius * Math.cos(-prev.angle*Math.PI/180) 
-  const py = center_y + prev.radius * Math.sin(-prev.angle*Math.PI/180)
+// const drawPoint = ctx => (prev, actual) => {
+//   const centerX = window.innerWidth / 2
+//   const centerY = window.innerHeight / 2
+//   const px = centerX + prev.radius * Math.cos(-prev.angle * Math.PI / 180)
+//   const py = centerY + prev.radius * Math.sin(-prev.angle * Math.PI / 180)
 
-  const ax = center_x + actual.radius * Math.cos(-actual.angle*Math.PI/180) 
-  const ay = center_y + actual.radius * Math.sin(-actual.angle*Math.PI/180)
+//   const ax = centerX + actual.radius * Math.cos(-actual.angle * Math.PI / 180)
+//   const ay = centerY + actual.radius * Math.sin(-actual.angle * Math.PI / 180)
 
-  ctx.strokeStyle = `hsla(${35 * actual.age / 360}, 94%, 65%, ${ 1 - actual.age / 360 })`
-  ctx.quadraticCurveTo(px, py, ax, ay)
-  return actual
-}
+//   ctx.strokeStyle = `hsla(${35 * actual.age / 360}, 94%, 65%, ${1 - actual.age / 360})`
+//   ctx.quadraticCurveTo(px, py, ax, ay)
+//   return actual
+// }
+// const randomRange =
+//   (min, max) => Math.floor(Math.random() * (max - min + 1)) + min
 
 const cp = (p) => {
-  const center_x = window.innerWidth / 2
-  const center_y = window.innerHeight / 2
-  return {
-    x: center_x + p.radius * Math.cos(-p.angle*Math.PI/180),
-    y: center_y + p.radius * Math.sin(-p.angle*Math.PI/180)
-  }
+  const centerX = window.innerWidth / 2
+  const centerY = window.innerHeight / 2
+  return [
+    centerX + p.radius * Math.cos(-p.angle * Math.PI / 180),
+    centerY + p.radius * Math.sin(-p.angle * Math.PI / 180)
+  ]
 }
 
 const drawSmoothPoint = (ctx, p0, p1, p2, p3) => {
   const { s, e } = smooth(cp(p0), cp(p1), cp(p2), cp(p3))
-  ctx.strokeStyle = `hsla(${35 * p1.age / 360}, 94%, 65%, ${ 1 - p1.age / 360 })`
+  ctx.strokeStyle = `hsla(${35 * p1.age / 360}, 94%, 65%, ${1 - p1.age / 360})`
   ctx.quadraticCurveTo(s.x, s.y, e.x, e.y)
 }
+const drawPoints = (ctx, points) => {
+  const pp = points.reduce((acc, x) => acc.concat(cp(x)), [])
+  const smoothPoints = getCurvePoints(pp, 1, 50)
+  ctx.strokeStyle = '#FFF'
+  for(let i = 0; i < smoothPoints.length - 3;i+=4){
+    ctx.quadraticCurveTo(smoothPoints[i], smoothPoints[i + 1], smoothPoints[i + 2], smoothPoints[i + 3])
+  }
+}
 
-const randomRange =
-  (min, max) => Math.floor(Math.random() * (max - min + 1)) + min
 
 app.model({
   state: {
@@ -62,7 +72,7 @@ app.model({
     play: false,
     setup: false,
     angle: 0,
-    particules: [],
+    particules: []
   },
   reducers: {
     init: (data, state) =>
@@ -101,7 +111,7 @@ app.model({
         send('buffer', decodedData, done)
         send('play', decodedData, done)
       }
-      return fetch(URL)
+      return window.fetch(URL)
         .then(response => response.arrayBuffer())
         .then(buf => context.decodeAudioData(buf, decoding))
     },
@@ -112,31 +122,18 @@ app.model({
 
         send('load', URL, done)
         send('init', { canvas, ctx }, done)
-        return requestAnimationFrame(() => send('frame', done))
-      }
-      else if(state.setup){
+        return window.requestAnimationFrame(() => send('frame', done))
+      } else if (state.setup) {
         const frequencyData = new Uint8Array(state.analyser.frequencyBinCount)
         state.analyser.getByteFrequencyData(frequencyData)
-        //const avg = frequencyData.reduce((acc, x) => acc + x, 0) / frequencyData.length
-
         const max = Math.max(...frequencyData)
+
         if (state.particules.length > 4) {
           state.ctx.clearRect(0, 0, window.innerWidth, window.innerHeight)
           state.ctx.beginPath()
-
-          for(let i = 1; i < state.particules.length - 2; i+=2){
-            drawSmoothPoint(
-              state.ctx,
-              state.particules[i - 1],
-              state.particules[i],
-              state.particules[i + 1],
-              state.particules[i + 2]
-            )
-          }
-
+          const pp = drawPoints(state.ctx, state.particules)
 //          state.particules
 //            .reduce(drawPoint(state.ctx), state.particules[0])
-
           state.ctx.stroke()
         }
         const pp = state.particules
@@ -146,13 +143,13 @@ app.model({
         send('update', pp, done)
         send('particule', { angle: state.angle, radius: max, age: 0 }, done)
       }
-     
-      requestAnimationFrame(() => send('frame', done))
+
+      window.requestAnimationFrame(() => send('frame', done))
     }
   },
   subscriptions: [
     (send, done) =>
-      requestAnimationFrame(() => send('frame', done)),
+      window.requestAnimationFrame(() => send('frame', done))
   ]
 })
 
